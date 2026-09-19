@@ -139,6 +139,12 @@ closing one line and opening the next, so each line is a complete run of eight b
 two halves are eight bars against seven and cannot be spaced alike, since every system but the last is
 justified to the full width.
 
+The layout is expressed as **bars per line** rather than as a break marked in the MusicXML, because the two
+are not the same thing. A break only *adds* a system boundary: if the engraver had already wrapped earlier,
+at a narrow window or with wide bars, the break lands mid-line and strands a bar on its own. A bar count
+per line is honoured at any width. Below roughly 800px the eight bars genuinely will not fit and the
+engraver wraps them anyway, so on a phone the rule falls back to its natural layout.
+
 Two historical versions ship, and the user picks which are in the pool the way scale families are picked:
 
 - **Fenaroli**, *Regole musicali per i principianti di cembalo* (Naples, 1775) — the Neapolitan partimento

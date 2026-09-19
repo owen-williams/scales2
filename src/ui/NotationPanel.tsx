@@ -25,7 +25,7 @@ export function NotationPanel({ realised, descriptors, showFingerings }: Notatio
     <ScoreView
       musicXml={musicXml}
       showFingerings={showFingerings}
-      evenMeasures={realised.evenMeasures ?? false}
+      measuresPerSystem={realised.measuresPerSystem ?? 0}
       label={label}
     />
   );

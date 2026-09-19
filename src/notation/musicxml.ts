@@ -392,30 +392,11 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return out;
 }
 
-/**
- * The measure indices that should begin a new line.
- *
- * The realised exercise asks in *events*, because that is the unit it thinks
- * in; a system can only begin at a barline, so a request that falls mid-bar is
- * dropped rather than rounded to somewhere the music did not ask for.
- */
-function systemBreakMeasures(
-  breaks: readonly number[] | undefined,
-  eventsPerMeasure: number,
-): ReadonlySet<number> {
-  const measures = new Set<number>();
-  for (const at of breaks ?? []) {
-    if (at > 0 && at % eventsPerMeasure === 0) measures.add(at / eventsPerMeasure);
-  }
-  return measures;
-}
-
 function partElement(
   part: HandPart,
   fifths: number,
   noteType: NoteType,
   id: string,
-  systemBreaks: readonly number[] | undefined,
 ): XmlElement {
   // Eight eighths, four quarters or a single semibreve: a bar holds however
   // many events fit it.
@@ -425,15 +406,12 @@ function partElement(
   if (measures.length === 0) measures.push([]);
 
   const state = newAccidentalState(fifths);
-  const breakBefore = systemBreakMeasures(systemBreaks, eventsPerMeasure);
 
   const measureElements = measures.map((events, measureIndex) => {
     // Every barline cancels the accidentals accumulated inside it.
     state.sounding.clear();
 
     const children: XmlChild[] = [];
-    // `<print>` comes before everything else in the measure.
-    if (breakBefore.has(measureIndex)) children.push(el('print', { 'new-system': 'yes' }));
     if (measureIndex === 0) children.push(attributesElement(fifths, part.hand));
 
     events.forEach((event, i) => {
@@ -485,13 +463,7 @@ export function toMusicXml(realised: RealisedExercise): string {
   );
 
   const parts = realised.parts.map((part, index) =>
-    partElement(
-      part,
-      realised.fifths,
-      realised.noteType,
-      partIds[index] ?? `P${index + 1}`,
-      realised.systemBreaks,
-    ),
+    partElement(part, realised.fifths, realised.noteType, partIds[index] ?? `P${index + 1}`),
   );
 
   const score = el('score-partwise', { version: '4.0' }, [

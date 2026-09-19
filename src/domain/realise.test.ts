@@ -209,9 +209,8 @@ describe('realiseExercise — Rule of the Octave', () => {
     expect(realised.scaleType).toBeUndefined();
     expect(realised.tonicNote).toBeUndefined();
     expect(realised.exercise).toEqual(ruleOfOctave({ mode: 'minor' }));
-    // Up the scale on one line, back down on the next: the break sits on the
-    // turn, after the eight ascending chords.
-    expect(realised.systemBreaks).toEqual([8]);
+    // Eight bars to a line, so the ascent fills one and the descent the next.
+    expect(realised.measuresPerSystem).toBe(8);
   });
 
   it('titles itself with the key alone, leaving the rule to the descriptors', () => {

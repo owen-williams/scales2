@@ -21,8 +21,8 @@ import type { IOSMDOptions, OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 export interface ScoreViewProps {
   musicXml: string;
   showFingerings: boolean;
-  /** Give every bar the same width. Only for music that is uniform bar to bar. */
-  evenMeasures?: boolean;
+  /** Lay the score out this many bars to a line. 0 lets the engraver decide. */
+  measuresPerSystem?: number;
   /** Accessible description, e.g. "Notation for E♭ Harmonic Minor, both hands, similar motion, 2 octaves". */
   label: string;
 }
@@ -38,7 +38,7 @@ const BOX_EPSILON_PX = 4;
 interface LoadedSignature {
   readonly musicXml: string;
   readonly showFingerings: boolean;
-  readonly evenMeasures: boolean;
+  readonly measuresPerSystem: number;
   readonly colour: string;
 }
 
@@ -260,7 +260,7 @@ function decorateSvg(container: HTMLElement): void {
 export function ScoreView({
   musicXml,
   showFingerings,
-  evenMeasures = false,
+  measuresPerSystem = 0,
   label,
 }: ScoreViewProps): JSX.Element {
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -304,14 +304,14 @@ export function ScoreView({
         if (!isCurrent()) return;
 
         const colour = readColour(container);
-        const signature: LoadedSignature = { musicXml, showFingerings, evenMeasures, colour };
+        const signature: LoadedSignature = { musicXml, showFingerings, measuresPerSystem, colour };
         const previous = loadedRef.current;
         const needsLoad =
           osmdRef.current === null ||
           previous === null ||
           previous.musicXml !== signature.musicXml ||
           previous.showFingerings !== signature.showFingerings ||
-          previous.evenMeasures !== signature.evenMeasures ||
+          previous.measuresPerSystem !== signature.measuresPerSystem ||
           previous.colour !== signature.colour;
 
         if (osmdRef.current === null) {
@@ -330,9 +330,16 @@ export function ScoreView({
           // turn fingerings off — so the rule has to be set directly for the
           // flag to be able to turn them back on.
           osmd.EngravingRules.RenderFingerings = showFingerings;
-          // Uniform bar widths, so two systems of different bar counts still
-          // space their music identically.
-          osmd.EngravingRules.FixedMeasureWidth = evenMeasures;
+          // A fixed number of bars to a line. Unlike a break marked in the
+          // MusicXML, this is honoured at any width: the engraver compresses
+          // the bars to fit rather than wrapping early and orphaning the rest.
+          osmd.EngravingRules.RenderXMeasuresPerLineAkaSystem = measuresPerSystem;
+          // The last line is left at its natural width by default, so it comes
+          // up short against the ones above it. Where the bars-per-line is
+          // fixed, every line holds the same music and should be the same
+          // length — so stretch it too. Left alone for everything else, where a
+          // part-filled final line stretched to full width looks wrong.
+          osmd.EngravingRules.StretchLastSystemLine = measuresPerSystem > 0;
           // There is no `fingeringPositionFromXML` option in 1.9; it lives on
           // EngravingRules. Note that OSMD 1.9 parses the `placement` attribute
           // we write but does not act on it for fingerings — it engraves them
@@ -341,10 +348,6 @@ export function ScoreView({
           // MusicXML because it is correct and other renderers honour it; this
           // flag stays on so the app picks the behaviour up if OSMD gains it.
           osmd.EngravingRules.FingeringPositionFromXML = true;
-          // Off by default: without it OSMD silently ignores the
-          // `<print new-system="yes"/>` the writer emits, and the Rule of the
-          // Octave's two halves run together on one line.
-          osmd.EngravingRules.NewSystemAtXMLNewSystemAttribute = true;
 
           await osmd.load(musicXml);
           if (!isCurrent()) return;
@@ -396,7 +399,7 @@ export function ScoreView({
       // Invalidate anything still in flight for this effect run.
       generationRef.current++;
     };
-  }, [musicXml, showFingerings, evenMeasures, resizeNonce]);
+  }, [musicXml, showFingerings, measuresPerSystem, resizeNonce]);
 
   // -- Resize --------------------------------------------------------------
   useEffect(() => {

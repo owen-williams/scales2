@@ -237,10 +237,10 @@ function realiseRuleOfOctaveExercise(e: RuleOfOctaveExercise): RealisedExercise 
     fifths,
     hasFingering: false,
     noteType: 'whole',
-    // Up the scale on one line, back down on the next, evenly spaced across
-    // both so the two halves match.
-    systemBreaks: [ASCENDING_BASS_DEGREES.length],
-    evenMeasures: true,
+    // Eight bars to a line: up the scale on one, back down on the next. The
+    // octave is written twice, so both lines are complete runs of eight and
+    // are spaced identically.
+    measuresPerSystem: ASCENDING_BASS_DEGREES.length,
   };
 }
 

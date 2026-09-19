@@ -282,21 +282,14 @@ export interface RealisedExercise {
   readonly hasFingering: boolean;
   readonly noteType: NoteType;
   /**
-   * Event indices where the engraver should start a new line, if it can.
+   * Lay the music out this many bars to a line.
    *
-   * A request rather than an instruction: a break only happens where the index
-   * falls on a barline, since a system cannot start mid-bar. The Rule of the
-   * Octave uses it to put its ascending and descending halves on separate
-   * lines, which is how the rule is read — up the scale, then back down.
+   * Says the shape directly rather than marking where to break, because the two
+   * are not the same thing: a break only *adds* a system boundary, so if the
+   * engraver had already wrapped earlier — at a narrow window, or with wide
+   * bars — the break lands mid-line and leaves an orphan bar on its own. A bar
+   * count per line is honoured whatever the width, which is what makes the
+   * Rule of the Octave's two halves reliably equal.
    */
-  readonly systemBreaks?: readonly number[];
-  /**
-   * Ask the engraver to give every bar the same width.
-   *
-   * Only sensible where every bar holds the same amount of music. The Rule of
-   * the Octave is one chord a bar throughout, and without this its two lines —
-   * eight bars then seven — are spaced differently from each other, which reads
-   * as though the descending half were slower.
-   */
-  readonly evenMeasures?: boolean;
+  readonly measuresPerSystem?: number;
 }
