@@ -19,7 +19,10 @@ COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
-  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+# 127.0.0.1, not localhost: the name resolves to ::1 first, and a probe that
+# cannot connect leaves the container permanently unhealthy — which a reverse
+# proxy like Coolify's reports to the browser as 502 Bad Gateway.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
