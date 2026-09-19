@@ -534,6 +534,28 @@ describe('toMusicXml — measures', () => {
     }
   });
 
+  it('writes one semibreve chord to the bar', () => {
+    // What the Rule of the Octave uses. Each sonority gets a bar to itself, so
+    // it is read and voiced rather than played in time.
+    const doc = parse(toMusicXml({ ...quarterNoteChords, noteType: 'whole' }));
+
+    for (const [partIndex, part] of quarterNoteChords.parts.entries()) {
+      const measures = measuresOf(doc, partIndex);
+      expect(measures).toHaveLength(part.events.length);
+
+      for (const measure of measures) {
+        expect(measureDuration(measure)).toBe(8);
+        // Chord members carry no duration of their own, so one bar holds one
+        // event however many notes that event sounds.
+        expect(notesOf(measure).filter((note) => !isChordMember(note))).toHaveLength(1);
+        for (const note of notesOf(measure)) {
+          expect(childText(note, 'type')).toBe('whole');
+        }
+        expect(all(measure, 'beam')).toHaveLength(0);
+      }
+    }
+  });
+
   it('numbers measures from one', () => {
     const doc = parse(toMusicXml(eFlatMinorBothHands));
     expect(measuresOf(doc, 0).map((m) => m.getAttribute('number'))).toEqual(['1', '2', '3', '4']);

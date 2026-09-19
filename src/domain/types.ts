@@ -254,7 +254,7 @@ export interface HandPart {
  * read vertically — four notes to think about at once — and is practised
  * slower.
  */
-export type NoteType = 'eighth' | 'quarter';
+export type NoteType = 'eighth' | 'quarter' | 'whole';
 
 /**
  * An exercise resolved into actual notes: the bridge between the domain model

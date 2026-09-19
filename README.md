@@ -132,7 +132,8 @@ height is left as margin rather than spent on an overflowing score.
 The Rule of the Octave is the thoroughbass convention that assigns a chord to every degree of the scale,
 ascending and back down: play the scale in the left hand and the rule tells you what the right hand does
 over each note. It was how an eighteenth-century keyboard player learned to harmonise, and it is one octave
-up and down — fifteen chords — every time, so motion, octaves and direction do not apply to it.
+up and down — fifteen chords — every time, so motion, octaves and direction do not apply to it. It is
+engraved a chord to the bar, in semibreves, because it is read and voiced rather than played in time.
 
 Two historical versions ship, and the user picks which are in the pool the way scale families are picked:
 

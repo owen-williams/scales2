@@ -3,7 +3,7 @@
  *
  * The output is a MusicXML 4.0 `score-partwise` document: one `<part>` per hand,
  * one note type throughout, every measure a complete 4/4 bar. A scale runs in
- * beamed eighths; the Rule of the Octave in quarter-note chords.
+ * beamed eighths; the Rule of the Octave in semibreve chords, one to a bar.
  *
  * The only genuinely subtle part is accidental placement. MusicXML separates
  * *what a note sounds* (`<alter>`, always present when the note is altered) from
@@ -45,7 +45,11 @@ const DIVISIONS = 2;
 /** A full 4/4 bar, in divisions. Every measure is padded out to exactly this. */
 const DIVISIONS_PER_MEASURE = DIVISIONS * 4;
 /** How long one event lasts, in divisions. */
-const NOTE_DURATIONS: Readonly<Record<NoteType, number>> = { eighth: 1, quarter: DIVISIONS };
+const NOTE_DURATIONS: Readonly<Record<NoteType, number>> = {
+  eighth: 1,
+  quarter: DIVISIONS,
+  whole: DIVISIONS_PER_MEASURE,
+};
 /** Eighth notes are beamed four to a group, as printed scales conventionally are. */
 const BEAM_GROUP = 4;
 
@@ -389,7 +393,8 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
 }
 
 function partElement(part: HandPart, fifths: number, noteType: NoteType, id: string): XmlElement {
-  // Eight eighths or four quarters: a bar holds however many events fit it.
+  // Eight eighths, four quarters or a single semibreve: a bar holds however
+  // many events fit it.
   const eventsPerMeasure = DIVISIONS_PER_MEASURE / NOTE_DURATIONS[noteType];
   const measures = chunk(part.events, eventsPerMeasure);
   // An empty part still needs one (silent) measure so the document stays valid.
@@ -411,7 +416,7 @@ function partElement(part: HandPart, fifths: number, noteType: NoteType, id: str
           hand: part.hand,
           state,
           noteType,
-          // Only eighths are beamed; a quarter note carries no beam at all.
+          // Only eighths are beamed; nothing longer carries a beam at all.
           beam: noteType === 'eighth' ? beamKind(i, events.length) : null,
         }),
       );

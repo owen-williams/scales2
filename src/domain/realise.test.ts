@@ -198,10 +198,12 @@ describe('realiseExercise — events', () => {
 // ---------------------------------------------------------------------------
 
 describe('realiseExercise — Rule of the Octave', () => {
-  it('reads a chord to the quarter note, with no fingering and no scale type', () => {
+  it('reads a chord to the semibreve, with no fingering and no scale type', () => {
     const realised = realiseExercise(ruleOfOctave({ mode: 'minor' }));
 
-    expect(realised.noteType).toBe('quarter');
+    // One chord to a bar: the rule is read and voiced rather than played in
+    // time, so a semibreve apiece is how it is printed.
+    expect(realised.noteType).toBe('whole');
     // Fingerings for chords are not standard curated data, so none are invented.
     expect(realised.hasFingering).toBe(false);
     expect(realised.scaleType).toBeUndefined();

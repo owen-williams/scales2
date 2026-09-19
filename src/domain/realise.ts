@@ -232,7 +232,7 @@ function realiseRuleOfOctaveExercise(e: RuleOfOctaveExercise): RealisedExercise 
     parts,
     fifths,
     hasFingering: false,
-    noteType: 'quarter',
+    noteType: 'whole',
   };
 }
 
