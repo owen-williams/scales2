@@ -91,6 +91,13 @@ conventional answer from a rule rather than a lookup table. Twelve pairs tie on 
 against D♯ minor among them, and those are settled by the order of a curated candidate list. The rule does
 most of the work; the ordering does the rest, and both are tested.
 
+**Every exercise is placed on the staves, not at a fixed octave.** Both scales and the rule are built
+relative to the tonic, so pinning them to an octave number made the whole texture ride up with the key: a
+two-octave B♭ minor put the left hand *entirely* above the bass staff, eight ledger lines up at the top,
+where the same scale in C sat on it. Each is now placed by the tonic nearest middle C, and the rule centres
+each hand on its own staff. A multi-octave run is wider than a staff, so ledger lines at the extremes are
+inherent and correct; a whole hand starting off its staff is not, and a test holds that line.
+
 **Fingerings are curated, never computed.** They live in `src/domain/fingering/` as explicit data with the
 thumb positions documented in comments, and the tests assert the invariants that make them trustworthy —
 fingers 1–5 only, no repeated finger on adjacent notes, and the thumb never on a black key in the natural,

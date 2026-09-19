@@ -152,6 +152,12 @@ const MAX_ZOOM = 2.5;
 const MIN_ZOOM = 0.12;
 /** Don't re-render for a change too small to see. */
 const ZOOM_EPSILON = 0.02;
+/**
+ * Vertical gap between one system and the next, in OSMD's staff-line units.
+ * The default is 7, which is less than the gap inside a grand staff and makes
+ * two lines of music read as one slab.
+ */
+const SYSTEM_GAP = 12;
 
 /** How many bars the engraver put on the first line. */
 function barsOnFirstLine(container: HTMLElement): number {
@@ -351,6 +357,16 @@ export function ScoreView({
           // turn fingerings off — so the rule has to be set directly for the
           // flag to be able to turn them back on.
           osmd.EngravingRules.RenderFingerings = showFingerings;
+          // Air between one line and the next.
+          //
+          // The default leaves two systems closer together than the two staves
+          // *within* a system, so a grand staff reads as one block of four
+          // staves rather than as two lines of music. Only the gap between
+          // systems is widened; `BetweenStaffDistance` is left alone, since the
+          // treble and bass of one hand-pair belong together.
+          osmd.EngravingRules.MinimumDistanceBetweenSystems = SYSTEM_GAP;
+          osmd.EngravingRules.MinSkyBottomDistBetweenSystems = SYSTEM_GAP;
+
           // A fixed number of bars to a line. Unlike a break marked in the
           // MusicXML, this is honoured at any width: the engraver compresses
           // the bars to fit rather than wrapping early and orphaning the rest.

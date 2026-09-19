@@ -47,6 +47,7 @@ import type {
   Hand,
   HandPart,
   MotionOption,
+  PitchClass,
   RealisedExercise,
   RuleOfOctaveExercise,
   RuleOfOctaveMode,
@@ -66,22 +67,43 @@ import type {
 type Leg = 'up' | 'down';
 
 /**
+ * Where the right hand's lowest tonic should sit, as a MIDI note.
+ *
+ * Middle C for the short scales; an octave down once the scale is long enough
+ * that starting there would climb off the top of the keyboard.
+ */
+const RIGHT_HAND_TARGET = { short: 60, long: 48 } as const;
+
+/**
  * Where each hand's *lowest* tonic sits, by exercise.
  *
- * Similar motion keeps the hands an octave apart with the right hand on middle
- * C, and drops both an octave for the longer scales so that the music sits
- * centred on the keyboard rather than climbing out of it. The hand that would
- * actually run out is the *right* — it is the higher of the two — and only at
- * four octaves, where an undropped right hand would reach B8. Three octaves is
- * dropped for balance, not necessity.
+ * Chosen per key rather than fixed, which matters more than it sounds. Pinning
+ * the right hand to octave 4 meant B♭ began ten semitones above C and the whole
+ * scale rode up with it: a two-octave B♭ minor put the left hand *entirely*
+ * above the bass staff, eight ledger lines up at the top, where the same scale
+ * in C sat on it. Placing the tonic nearest middle C instead makes every key
+ * read like C does.
  *
- * Contrary motion instead starts both hands on the *same* pitch — that is what
- * makes it contrary motion — so the left hand's range extends downwards from
- * the shared note, and its lowest tonic is `4 - octaves`.
+ * The hands stay exactly an octave apart in similar motion — that is what is
+ * played, so it is what is written. A grand staff's two staves are more than an
+ * octave apart in the middle, so an octave-apart pair cannot centre on both at
+ * once; ledger lines at the extremes of a multi-octave scale are inherent and
+ * correct. What is not correct is a whole hand sitting off its staff before it
+ * starts.
+ *
+ * Contrary motion instead starts both hands on the *same* pitch, so the left
+ * hand's range extends downwards from the shared note.
  */
-function lowestTonicOctaves(octaves: number, contrary: boolean): Readonly<Record<Hand, number>> {
-  if (contrary) return { right: 4, left: 4 - octaves };
-  return octaves <= 2 ? { right: 4, left: 3 } : { right: 3, left: 2 };
+function lowestTonicOctaves(
+  tonic: PitchClass,
+  octaves: number,
+  contrary: boolean,
+): Readonly<Record<Hand, number>> {
+  const target = octaves <= 2 ? RIGHT_HAND_TARGET.short : RIGHT_HAND_TARGET.long;
+  // MIDI is (octave + 1) * 12 + pitch class, so this is the octave that puts
+  // the tonic nearest the target.
+  const right = Math.round((target - tonic) / 12) - 1;
+  return contrary ? { right, left: right - octaves } : { right, left: right - 1 };
 }
 
 /** The leg a hand sets off on. Only `'descending'` starts at the top. */
@@ -161,7 +183,7 @@ function realiseScale(e: ScaleExercise): RealisedExercise {
   const tonicNote = chooseTonicSpelling(e.tonic, scaleType);
 
   const contrary = e.motion === 'contrary';
-  const startOctaves = lowestTonicOctaves(e.octaves, contrary);
+  const startOctaves = lowestTonicOctaves(e.tonic, e.octaves, contrary);
   const lead = leadingLeg(e.direction);
 
   const parts = SCORE_ORDER.map((hand) =>

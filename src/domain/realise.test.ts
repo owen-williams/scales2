@@ -359,17 +359,19 @@ describe('realiseExercise — octave placement', () => {
   });
 
   it('numbers octaves across the C boundary', () => {
-    // A major starts in octave 4 and crosses into octave 5 at the C sharp.
+    // A major starts in octave 3 — the tonic nearest middle C, so the scale
+    // sits on the staff instead of riding up with the key — and crosses into
+    // octave 4 at the C sharp.
     const realised = realiseExercise(exercise({ tonic: 9, octaves: 1 }));
     expect(pitchNames(rightPart(realised))).toEqual([
+      'A3',
+      'B3',
+      'C♯4',
+      'D4',
+      'E4',
+      'F♯4',
+      'G♯4',
       'A4',
-      'B4',
-      'C♯5',
-      'D5',
-      'E5',
-      'F♯5',
-      'G♯5',
-      'A5',
     ]);
 
     // Two octaves of C major span C4 to C6 with the change of number on each C.
@@ -379,13 +381,49 @@ describe('realiseExercise — octave placement', () => {
     expect(names[7]).toBe('C5');
     expect(names[14]).toBe('C6');
 
-    // A four-octave B major, starting an octave lower, ends on B6.
+    // A four-octave B major starts lower again, so that four octaves still fit
+    // on the keyboard, and ends on B6 rather than climbing off the top.
     const fourOctaves = realiseExercise(exercise({ tonic: 11, octaves: 4 }));
     const bMajor = pitchNames(rightPart(fourOctaves));
-    expect(bMajor[0]).toBe('B3');
-    expect(bMajor[bMajor.length - 1]).toBe('B7');
+    expect(bMajor[0]).toBe('B2');
+    expect(bMajor[bMajor.length - 1]).toBe('B6');
     // The very next note after each B is a C in the octave above.
-    expect(bMajor[1]).toBe('C♯4');
+    expect(bMajor[1]).toBe('C♯3');
+  });
+
+  it('keeps every key on the staves, not just C', () => {
+    /** Ledger lines a note needs outside a staff. Treble E4..F5, bass G2..A3. */
+    const ledgers = (midi: number, low: number, high: number): number => {
+      if (midi < low) return Math.ceil((low - midi) / 3.5);
+      if (midi > high) return Math.ceil((midi - high) / 3.5);
+      return 0;
+    };
+
+    // A multi-octave scale must leave its staff — an octave run is wider than a
+    // staff, so ledger lines at the extremes are inherent. What must not happen
+    // is a whole hand starting off its staff because the key is a high one: a
+    // two-octave B♭ minor once put the left hand entirely above the bass staff,
+    // eight ledger lines up, where C sat on it. The bound below is generous
+    // enough for the inherent case and nowhere near enough for that one.
+    for (const tonic of [0, 3, 7, 10, 11] as PitchClass[]) {
+      for (const octaves of [1, 2] as OctaveCount[]) {
+        const realised = realiseExercise(exercise({ tonic, octaves, scaleTypeId: 'major' }));
+        const where = `pc${String(tonic)} ${String(octaves)}oct`;
+
+        for (const part of realised.parts) {
+          const staff = part.hand === 'right' ? { low: 64, high: 77 } : { low: 43, high: 57 };
+          const midis = part.events.flatMap((event) => event.pitches.map(midiOf));
+
+          // The run must straddle its staff rather than sit wholly outside it.
+          expect(Math.min(...midis), `${where} ${part.hand} starts above its staff`).toBeLessThanOrEqual(
+            staff.high,
+          );
+          for (const midi of midis) {
+            expect(ledgers(midi, staff.low, staff.high), `${where} ${part.hand}`).toBeLessThanOrEqual(6);
+          }
+        }
+      }
+    }
   });
 
   it('never strays outside a real keyboard', () => {
