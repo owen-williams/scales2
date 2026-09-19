@@ -329,6 +329,10 @@ export function ScoreView({ musicXml, showFingerings, label }: ScoreViewProps): 
           // MusicXML because it is correct and other renderers honour it; this
           // flag stays on so the app picks the behaviour up if OSMD gains it.
           osmd.EngravingRules.FingeringPositionFromXML = true;
+          // Off by default: without it OSMD silently ignores the
+          // `<print new-system="yes"/>` the writer emits, and the Rule of the
+          // Octave's two halves run together on one line.
+          osmd.EngravingRules.NewSystemAtXMLNewSystemAttribute = true;
 
           await osmd.load(musicXml);
           if (!isCurrent()) return;

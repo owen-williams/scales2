@@ -556,6 +556,34 @@ describe('toMusicXml — measures', () => {
     }
   });
 
+  describe('system breaks', () => {
+    it('starts a new line where the music asks, before anything else in the bar', () => {
+      const doc = parse(
+        toMusicXml({ ...quarterNoteChords, noteType: 'whole', systemBreaks: [2] }),
+      );
+
+      for (const [partIndex] of quarterNoteChords.parts.entries()) {
+        const measures = measuresOf(doc, partIndex);
+        // One event to a bar, so event 2 is the start of the third measure.
+        expect(measures[2]?.children[0]?.tagName).toBe('print');
+        expect(measures[2]?.children[0]?.getAttribute('new-system')).toBe('yes');
+        expect(all(doc, 'print')).toHaveLength(quarterNoteChords.parts.length);
+      }
+    });
+
+    it('ignores a break that does not fall on a barline', () => {
+      // Four events to the bar, so event 2 is mid-measure. A system cannot
+      // start there, and rounding it elsewhere would break the music somewhere
+      // it never asked for.
+      const doc = parse(toMusicXml({ ...quarterNoteChords, systemBreaks: [2] }));
+      expect(all(doc, 'print')).toHaveLength(0);
+    });
+
+    it('leaves a score alone when it asks for nothing', () => {
+      expect(all(parse(toMusicXml(eFlatMinorBothHands)), 'print')).toHaveLength(0);
+    });
+  });
+
   it('numbers measures from one', () => {
     const doc = parse(toMusicXml(eFlatMinorBothHands));
     expect(measuresOf(doc, 0).map((m) => m.getAttribute('number'))).toEqual(['1', '2', '3', '4']);

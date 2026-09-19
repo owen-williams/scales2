@@ -281,4 +281,13 @@ export interface RealisedExercise {
    */
   readonly hasFingering: boolean;
   readonly noteType: NoteType;
+  /**
+   * Event indices where the engraver should start a new line, if it can.
+   *
+   * A request rather than an instruction: a break only happens where the index
+   * falls on a barline, since a system cannot start mid-bar. The Rule of the
+   * Octave uses it to put its ascending and descending halves on separate
+   * lines, which is how the rule is read — up the scale, then back down.
+   */
+  readonly systemBreaks?: readonly number[];
 }

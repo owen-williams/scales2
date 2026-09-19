@@ -34,7 +34,11 @@ import { formatNote } from './pitch';
 import { buildRun, chooseTonicSpelling, keySignatureFifths, scaleName } from './scale';
 import { getScaleType } from './scaleTypes';
 import { fingersForAscendingRun, hasFingering as setCoversHand } from './fingering';
-import { distinctVersionsFor, realiseRuleOfOctave } from './ruleOfOctave';
+import {
+  ASCENDING_BASS_DEGREES,
+  distinctVersionsFor,
+  realiseRuleOfOctave,
+} from './ruleOfOctave';
 import { assertNever, ROO_VERSION_IDS } from './types';
 import type {
   DirectionOption,
@@ -233,6 +237,8 @@ function realiseRuleOfOctaveExercise(e: RuleOfOctaveExercise): RealisedExercise 
     fifths,
     hasFingering: false,
     noteType: 'whole',
+    // Up the scale on one line, back down on the next.
+    systemBreaks: [ASCENDING_BASS_DEGREES.length],
   };
 }
 
