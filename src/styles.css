@@ -1,0 +1,794 @@
+/*
+ * Scales — one stylesheet, plain CSS, custom properties.
+ *
+ * The app lives on a music stand: read from a metre away, glanced at between
+ * attempts, operated with one hand. Everything here follows from that. One
+ * accent colour, used only where it means "press this" or "this is on".
+ *
+ * Contrast (WCAG 2.1, verified numerically for both themes):
+ *   light  text/bg 17.5   muted/bg 5.8   accent/bg 5.3   accent-text/accent 5.5   warn/warn-surface 6.7
+ *   dark   text/bg 16.0   muted/bg 7.4   accent/bg 5.9   accent-text/accent 6.1   warn/warn-surface 8.9
+ *   control-line/bg  3.2 (light) / 4.0 (dark) — the 3:1 floor for control boundaries.
+ */
+
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --surface-subtle: #f1f2f4;
+  --text: #14161a;
+  --muted: #5c6370;
+  --line: #dfe1e6;
+  --control-line: #878f9d;
+  --accent: #1a63d6;
+  --accent-strong: #175ac2;
+  --accent-text: #ffffff;
+  --warn: #9a3412;
+  --warn-surface: #fdf3ee;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --radius: 0.875rem;
+  --radius-sm: 0.625rem;
+  --gutter: clamp(1rem, 4vw, 2rem);
+  --measure: 60rem;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --surface: #171a21;
+    --surface-subtle: #1d2129;
+    --text: #e9ecf1;
+    --muted: #9aa3b2;
+    --line: #2a2f3a;
+    --control-line: #6b7488;
+    --accent: #4c8dff;
+    --accent-strong: #69a0ff;
+    --accent-text: #0b0d11;
+    --warn: #fca5a5;
+    --warn-surface: #251a1a;
+
+    color-scheme: dark;
+  }
+}
+
+/* Pull the greys toward the text colour and make every boundary explicit. */
+@media (prefers-contrast: more) {
+  :root {
+    --muted: #33383f;
+    --line: #6a7280;
+    --control-line: #3d4450;
+    --accent: #0b48a8;
+    --accent-strong: #093a8a;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --muted: #d7dce4;
+      --line: #8b93a3;
+      --control-line: #aab2c0;
+      --accent: #8fbaff;
+      --accent-strong: #a9caff;
+      --accent-text: #05070a;
+    }
+  }
+
+  .panel--open,
+  .chip,
+  .button,
+  .reveal,
+  .segmented,
+  .dialog {
+    border-width: 2px;
+  }
+}
+
+/* ---------------------------------------------------------------- reset --- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  /* Respect the user's root size: every type size below is in rem. */
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+p,
+ul,
+figure,
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+fieldset {
+  border: 0;
+  min-inline-size: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+/* Never remove the outline; only ever move it somewhere it can be seen. */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------ app shell --- */
+
+/*
+ * The practice screen is one page.
+ *
+ * Someone at a piano should see the scale, the notation and the Next button in
+ * a single glance without touching the device. So the shell is exactly the
+ * height of the viewport, and the notation — the one element that can afford to
+ * be any size — absorbs whatever space is left over. See the note on `overflow`
+ * for the viewports too short to honour that.
+ */
+.app {
+  height: 100vh;
+  height: 100dvh;
+  /*
+   * `auto`, not `hidden`. The column compresses to one page for any viewport
+   * that can hold the header, the headline and the Next button — which is every
+   * ordinary one — and then there is nothing to scroll. But the notation panel
+   * has a floor and the headline and button are unshrinkable, so a very short
+   * viewport (a small phone in landscape) or a large browser text size can push
+   * past that floor. Scrolling there is the lesser evil: `hidden` clipped the
+   * Next button off the bottom with no way to reach it.
+   */
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__inner {
+  width: 100%;
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.app__header {
+  border-bottom: 1px solid var(--line);
+}
+
+.app__headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.75rem;
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+  padding-bottom: 0.5rem;
+}
+
+.wordmark {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* `min-height: 0` all the way down, or a flex child refuses to shrink below
+   its content and the column overflows instead of compressing. */
+.app__main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.practice {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* -------------------------------------------------------------- headline -- */
+
+/*
+ * Type sizes answer to the viewport's *height* as well as its width. A laptop
+ * window that is wide but short would otherwise get a five-rem headline and no
+ * room left for the score.
+ */
+.headline {
+  flex: 0 0 auto;
+  text-align: center;
+  padding-block: clamp(1rem, 4vh, 3rem) clamp(0.75rem, 2.5vh, 1.5rem);
+}
+
+.headline__name {
+  font-size: clamp(2rem, min(10vw, 9vh), 5.5rem);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.headline__meta {
+  margin-top: clamp(0.375rem, 1.5vh, 0.875rem);
+  font-size: clamp(0.9375rem, min(3.2vw, 2.6vh), 1.5rem);
+  line-height: 1.3;
+  color: var(--muted);
+  text-wrap: balance;
+}
+
+.headline__metaItem {
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- panels -- */
+
+/* The panels take all the space between the headline and the Next button. */
+.practice__panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  align-content: center;
+}
+
+/*
+ * Flex rather than grid, so the body can be told to take the leftover height —
+ * a grid item would ignore `flex` and size itself to the score instead.
+ *
+ * And `flex-basis: 0`, not `auto`. With `auto` the panel's share of the column
+ * depends on how tall the score inside it happens to be, and since the score is
+ * then scaled to the share it was given, the two chase each other: a big score
+ * claims space, gets shrunk, releases the space, and is re-measured smaller.
+ * Basing it on zero breaks the loop.
+ */
+.panel--notation {
+  flex: 1 1 0;
+  min-height: 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/*
+ * No card. The score is the only panel now that fingerings are engraved onto it
+ * rather than listed beside it, so a border round it separates it from nothing —
+ * and because the music wraps in whole systems, the panel is usually taller than
+ * the score inside it, which made the box look half-empty rather than roomy.
+ */
+.panel--open {
+  justify-items: stretch;
+  padding-block: 0.5rem;
+}
+
+.panel__head {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+/* One quiet line, only for the scales the catalogue does not cover. */
+.panel__note {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* A panel whose body is closed contributes no height of its own. */
+.panel__body:empty {
+  display: none;
+}
+
+/*
+ * The notation body is sized by the column, not by its contents: the score
+ * arrives asynchronously and changes size with every exercise, and a body that
+ * grew to fit would shove the Next button around. Being told its height instead
+ * means nothing below it ever moves.
+ */
+.panel--notation .panel__body--notation {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  /* However badly the fit misjudges a score, it is clipped rather than allowed
+     to spill out of the panel. */
+  overflow: hidden;
+}
+
+/* OSMD's SVG inherits its colour from here, so dark mode needs no special case. */
+.score {
+  color: var(--text);
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/*
+ * The canvas is exactly the space available, not the space the score wants.
+ * `ScoreView` measures this element to decide the zoom, so it has to report the
+ * box being fitted into — if it sized itself to its contents the fit would be a
+ * tautology and the score would never shrink.
+ */
+/* Flex, not grid: a percentage `max-height` on the SVG only resolves against a
+   parent whose own height is definite, and a grid row sized to its content is
+   not. Flex centring keeps the height definite all the way down. */
+.score__canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * The zoom passes in `ScoreView` get the engraving about right — how the music
+ * wraps, how big the noteheads are. This is the backstop that makes "it always
+ * fits" true rather than approximately true: the SVG carries intrinsic
+ * dimensions, so bounding it in both directions scales it to the box with its
+ * aspect ratio intact, however far out the zoom estimate was.
+ */
+.score__canvas svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: block;
+  margin-inline: auto;
+}
+
+.score__status {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+/* ------------------------------------------------------------- next bar --- */
+
+.next-bar {
+  /* The column never scrolls, so the button simply sits at its foot — always
+     in the same place, always under the thumb. */
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  padding-top: clamp(0.75rem, 2vh, 1.5rem);
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.next {
+  width: 100%;
+  max-width: 24rem;
+  min-height: 4.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: clamp(1.25rem, 4.5vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+
+.next:hover {
+  background: var(--accent-strong);
+}
+
+.next:active {
+  background: var(--accent-strong);
+  transform: scale(0.985);
+}
+
+.next:focus-visible {
+  /* Outside the button, where accent-on-background is 5.3:1. */
+  outline-offset: 3px;
+}
+
+/* ----------------------------------------------------------------- hints -- */
+
+.hints {
+  display: none;
+}
+
+/* Shown only where there is both a keyboard to use them on and height to spare;
+   in a short window the score is worth more than the reminder. */
+@media (min-width: 48rem) and (min-height: 44rem) {
+  .hints {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem 1.25rem;
+    padding-bottom: 1.25rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  .hints span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  background: var(--surface-subtle);
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------ empty pool -- */
+
+.empty {
+  flex: 1 1 auto;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 1rem;
+  max-width: 34rem;
+  margin-inline: auto;
+  padding-block: clamp(2rem, 10vw, 5rem);
+}
+
+.empty__title {
+  font-size: clamp(1.75rem, 6vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.empty__body {
+  color: var(--muted);
+  font-size: 1.0625rem;
+}
+
+.empty__reasons,
+.warning__list {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.empty__reasons {
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------- controls -- */
+
+.button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--control-line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 120ms ease;
+}
+
+/* Not `--surface-subtle`: that is the dialog footer's own background, so a
+   footer button would lose its fill entirely and be left with only its border
+   to separate it from the panel. */
+.button:hover {
+  background: var(--line);
+}
+
+.button--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.button--primary:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.reveal {
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--control-line);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 120ms ease;
+}
+
+.reveal:hover {
+  background: var(--surface-subtle);
+}
+
+.chip {
+  /* 2.75rem = the 44px minimum touch target at the default root size. */
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--control-line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.chip:hover {
+  background: var(--surface-subtle);
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.chip[aria-pressed='true']:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.linkButton {
+  padding: 0.35rem 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 0.9375rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 0.25rem;
+  border: 1px solid var(--control-line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.segmented__option {
+  display: block;
+}
+
+.segmented__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding-inline: 1.1rem;
+  border-radius: 999px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.segmented__option:hover .segmented__label {
+  background: var(--surface-subtle);
+}
+
+.segmented input:checked + .segmented__label {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.segmented input:focus-visible + .segmented__label {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- dialog -- */
+
+.dialog {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  width: min(100% - 1.5rem, 46rem);
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.dialog__frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1rem, 3vw, 1.75rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.dialog__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dialog__body {
+  display: grid;
+  gap: 1.75rem;
+  align-content: start;
+  /* Only the option list scrolls; the title and the pool count stay put. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem clamp(1rem, 3vw, 1.75rem);
+}
+
+.group + .group {
+  border-top: 1px solid var(--line);
+  padding-top: 1.75rem;
+}
+
+/* The legend now sits inside the row rather than wrapping it, so it must not
+   claim the full width or the actions get pushed onto their own line. */
+.group__legend {
+  padding: 0;
+}
+
+.group__legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1.25rem;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.group__title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.group__actions {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.group__note {
+  margin-bottom: 0.875rem;
+  max-width: 42rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dialog__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1rem clamp(1rem, 3vw, 1.75rem);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface-subtle);
+}
+
+.dialog__count {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.warning {
+  display: grid;
+  gap: 0.35rem;
+  flex: 1 1 18rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-sm);
+  background: var(--warn-surface);
+  color: var(--warn);
+  font-size: 0.9375rem;
+}
+
+.warning__title {
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------- reduced motion -- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .next:active {
+    transform: none;
+  }
+}
