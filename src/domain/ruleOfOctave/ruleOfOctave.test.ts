@@ -622,21 +622,34 @@ describe('the three positions', () => {
     }
   });
 
-  it('rises by one chord tone from position to position', () => {
+  it('turns the voicing over from position to position rather than climbing', () => {
+    // Each position takes the chord tone below and puts it on top. That is a
+    // rotation, not a transposition: the hand changes shape, it does not walk up
+    // the keyboard. The whole rule is then centred on its staff, so all three
+    // positions are written in the same register — which is the point, since a
+    // position is where the hand sits on the chord, not where it sits on the
+    // piano. (An earlier version asserted each position was strictly higher
+    // than the last, which is what pushed B major five ledger lines above the
+    // treble staff.)
     for (const tonic of ALL_TONICS) {
       const [first, second, third] = ROO_POSITIONS.map((position) =>
         pitchesOf(exercise(tonic, 'major', 'fenaroli', position)),
       );
+
       for (let event = 0; event < EVENTS_PER_RULE; event += 1) {
-        const lowest = (chords: Pitch[][]) => midiOf(chords[event]![0]!);
-        const highest = (chords: Pitch[][]) => {
-          const chord = chords[event]!;
-          return midiOf(chord[chord.length - 1]!);
-        };
-        expect(lowest(second!)).toBeGreaterThan(lowest(first!));
-        expect(lowest(third!)).toBeGreaterThan(lowest(second!));
-        expect(highest(second!)).toBeGreaterThan(highest(first!));
-        expect(highest(third!)).toBeGreaterThan(highest(second!));
+        const tops = [first, second, third].map((chords) => {
+          const chord = chords![event]!;
+          const top = chord[chord.length - 1]!;
+          return `${top.letter}${String(top.alter)}`;
+        });
+        // Three different chord tones on top, one per position.
+        expect(new Set(tops).size).toBe(3);
+
+        // ...and the same three pitch classes sounding in each.
+        const classes = [first, second, third].map((chords) =>
+          [...new Set(chords![event]!.map((pitch) => pitchClassOf(pitch)))].sort().join(','),
+        );
+        expect(new Set(classes).size).toBe(1);
       }
     }
   });
@@ -791,17 +804,59 @@ describe('spelling in all 24 keys', () => {
     }
   });
 
+  it('sits on the staves in every key, rather than riding up with the tonic', () => {
+    /**
+     * Ledger lines a note needs outside a staff, near enough for a bound.
+     * Treble spans E4..F5, bass G2..A3.
+     */
+    const ledgers = (midi: number, low: number, high: number): number => {
+      if (midi < low) return Math.ceil((low - midi) / 3.5);
+      if (midi > high) return Math.ceil((midi - high) / 3.5);
+      return 0;
+    };
+
+    // Both hands are built relative to the tonic, so without deliberate
+    // placement the whole texture climbs with the key: B major used to sit four
+    // ledger lines above the bass staff and five above the treble, leaving both
+    // staves empty underneath. An octave run has to leave its staff somewhere,
+    // so two is the floor here, not zero.
+    for (const tonic of ALL_TONICS) {
+      for (const mode of MODES) {
+        for (const version of ROO_VERSION_IDS) {
+          for (const position of ROO_POSITIONS) {
+            const { parts } = realiseRuleOfOctave(exercise(tonic, mode, version, position));
+            const right = parts.find((part) => part.hand === 'right');
+            const left = parts.find((part) => part.hand === 'left');
+            if (right === undefined || left === undefined) throw new Error('expected two parts');
+
+            const where = `pc${String(tonic)} ${mode} ${version} position ${String(position)}`;
+            for (const event of left.events) {
+              for (const pitch of event.pitches) {
+                expect(ledgers(midiOf(pitch), 43, 57), `bass ${where}`).toBeLessThanOrEqual(2);
+              }
+            }
+            for (const event of right.events) {
+              for (const pitch of event.pitches) {
+                expect(ledgers(midiOf(pitch), 64, 77), `treble ${where}`).toBeLessThanOrEqual(2);
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
   it('spells the awkward keys the way a musician would', () => {
     // E♭ minor's descending sixth is C♭, and the augmented sixth over it wants
     // the raised fourth, A♮ — not the B𝄫/A♯ an enharmonic shortcut would give.
     const eFlatMinor = readable(exercise(3, 'minor', 'fenaroli', 1));
-    expect(eFlatMinor.bass[DESCENDING_SIXTH]).toBe('C♭4');
+    expect(eFlatMinor.bass[DESCENDING_SIXTH]).toBe('C♭3');
     expect(eFlatMinor.chords[DESCENDING_SIXTH]).toBe('F4 A4 E♭5');
 
     // G♯ minor genuinely contains double sharps: F𝄪 as the leading tone and
     // C𝄪 as the raised fourth of the augmented sixth.
     const gSharpMinor = readable(exercise(8, 'minor', 'fenaroli', 1));
-    expect(gSharpMinor.bass[6]).toBe('F𝄪4');
+    expect(gSharpMinor.bass[6]).toBe('F𝄪3');
     expect(gSharpMinor.chords[DESCENDING_SIXTH]).toBe('A♯4 C𝄪5 G♯5');
 
     // F♯ major's descending sixth needs B♯, the sharpened fourth degree.

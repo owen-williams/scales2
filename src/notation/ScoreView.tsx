@@ -153,6 +153,12 @@ const MIN_ZOOM = 0.12;
 /** Don't re-render for a change too small to see. */
 const ZOOM_EPSILON = 0.02;
 
+/** How many bars the engraver put on the first line. */
+function barsOnFirstLine(container: HTMLElement): number {
+  const line = container.querySelector('g.staffline');
+  return line === null ? 0 : line.querySelectorAll('g.vf-measure').length;
+}
+
 /** How tall the music OSMD just drew actually is, in CSS pixels. */
 function drawnHeight(container: HTMLElement): number {
   const svg = container.querySelector('svg');
@@ -181,8 +187,9 @@ function searchZoom(params: {
   container: HTMLElement;
   renderAt: (zoom: number) => void;
   isCurrent: () => boolean;
+  measuresPerSystem: number;
 }): { zoom: number; rendered: number } | null {
-  const { container, renderAt, isCurrent } = params;
+  const { container, renderAt, isCurrent, measuresPerSystem } = params;
   const available = container.clientHeight;
   if (available <= 0) return null;
 
@@ -190,22 +197,36 @@ function searchZoom(params: {
   const target = available * 0.94;
 
   let rendered = Number.NaN;
-  const measure = (zoom: number): number | null => {
+
+  /**
+   * Draw at this zoom and report both how tall it came out and whether it is
+   * acceptable.
+   *
+   * Height is not the only constraint. Where the exercise asks for a fixed
+   * number of bars to a line, a zoom that makes the bars too wide for that many
+   * is *wrong however well it fits vertically* — the engraver wraps early and
+   * strands the remainder on a line of its own. So the search has to reject it,
+   * or growing the score to fill the height quietly breaks the layout.
+   */
+  const measure = (zoom: number): { height: number; fits: boolean } | null => {
     renderAt(zoom);
     if (!isCurrent()) return null;
     rendered = zoom;
-    return drawnHeight(container);
+    const height = drawnHeight(container);
+    const laidOut = measuresPerSystem === 0 || barsOnFirstLine(container) >= measuresPerSystem;
+    return { height, fits: height > 0 && height <= target && laidOut };
   };
 
-  const first = measure(1);
-  if (first === null) return null;
+  const firstMeasured = measure(1);
+  if (firstMeasured === null) return null;
+  const first = firstMeasured.height;
   if (first <= 0) return null;
 
   // `low` is the largest zoom known to fit and `high` the smallest known not to,
   // so the answer is always between them. `best` holds only a zoom that was
   // measured and did fit — never a guess — which is what lets the caller finish
   // by rendering something known to be safe.
-  let best: number | null = first <= target ? 1 : null;
+  let best: number | null = firstMeasured.fits ? 1 : null;
   let low = best === null ? MIN_ZOOM : 1;
   let high = best === null ? 1 : MAX_ZOOM;
 
@@ -219,10 +240,10 @@ function searchZoom(params: {
     // screen, and each probe is a full engraving.
     if (Math.abs(candidate - rendered) <= ZOOM_EPSILON) break;
 
-    const height = measure(candidate);
-    if (height === null) return null;
+    const measured = measure(candidate);
+    if (measured === null) return null;
 
-    if (height <= target) {
+    if (measured.fits) {
       best = candidate;
       low = candidate;
     } else {
@@ -359,7 +380,7 @@ export function ScoreView({
           osmd.render();
         };
 
-        const fitted = searchZoom({ container, renderAt, isCurrent });
+        const fitted = searchZoom({ container, renderAt, isCurrent, measuresPerSystem });
         if (!isCurrent()) return;
 
         if (fitted === null) {

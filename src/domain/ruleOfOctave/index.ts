@@ -34,7 +34,7 @@
  * the same page.
  */
 
-import { formatNote, letterIndex } from '../pitch';
+import { formatNote, letterIndex, midiOf } from '../pitch';
 import { chooseTonicSpelling, keySignatureFifths, scaleDegrees } from '../scale';
 import { SCALE_TYPES } from '../scaleTypes';
 import type {
@@ -343,6 +343,58 @@ function repeatTurningChord<T>(values: readonly T[], turn: number): T[] {
   return [...values.slice(0, turn + 1), arrival, ...values.slice(turn + 1)];
 }
 
+/**
+ * Where each hand should sit on the page.
+ *
+ * The middle line of each staff: B4 for the treble, D3 for the bass. Aiming a
+ * line's *average* at these keeps it on its staff instead of drifting above it.
+ */
+const TREBLE_CENTRE = 71;
+const BASS_CENTRE = 50;
+
+/** Move every pitch by whole octaves, spelling untouched. */
+function shiftOctaves(pitches: readonly Pitch[], octaves: number): Pitch[] {
+  if (octaves === 0) return [...pitches];
+  return pitches.map((pitch) => ({ ...pitch, octave: pitch.octave + octaves }));
+}
+
+/** The whole-octave shift that brings a line's average nearest to `target`. */
+function centringShift(pitches: readonly Pitch[], target: number): number {
+  if (pitches.length === 0) return 0;
+  const mean = pitches.reduce((total, pitch) => total + midiOf(pitch), 0) / pitches.length;
+  return Math.round((target - mean) / 12);
+}
+
+/**
+ * Put the realised rule where a reader expects to find it.
+ *
+ * The chords and the bass are built relative to the tonic, so without this the
+ * whole texture rides up with the key: B major sat four ledger lines above the
+ * bass staff and five above the treble, with both staves left looking empty
+ * underneath. Centring each hand on its own staff makes every key read the same,
+ * and because each line moves by whole octaves and as a unit, no interval and no
+ * voice leading changes — only the clef it is written against.
+ *
+ * The right hand is then pushed up if it would otherwise dip below the bass:
+ * the two may meet on a unison at the top of the bass's octave, which is how the
+ * voicing is built, but they must never cross.
+ */
+function placeOnStaves(
+  bass: readonly Pitch[],
+  upper: readonly (readonly Pitch[])[],
+): { bass: Pitch[]; upper: Pitch[][] } {
+  const placedBass = shiftOctaves(bass, centringShift(bass, BASS_CENTRE));
+
+  const flatUpper = upper.flat();
+  let shift = centringShift(flatUpper, TREBLE_CENTRE);
+
+  const bassTop = Math.max(...placedBass.map(midiOf));
+  const upperFloor = Math.min(...flatUpper.map(midiOf));
+  while (upperFloor + 12 * shift < bassTop) shift += 1;
+
+  return { bass: placedBass, upper: upper.map((voicing) => shiftOctaves(voicing, shift)) };
+}
+
 export function realiseRuleOfOctave(exercise: RuleOfOctaveExercise): {
   readonly title: string;
   readonly fifths: number;
@@ -383,6 +435,8 @@ export function realiseRuleOfOctave(exercise: RuleOfOctaveExercise): {
     upper.push(voicing);
   });
 
+  const placed = placeOnStaves(bass, upper);
+
   // Score order: the right hand on top, then the left, as everywhere else.
   const right: Hand = 'right';
   const left: Hand = 'left';
@@ -390,11 +444,11 @@ export function realiseRuleOfOctave(exercise: RuleOfOctaveExercise): {
   const parts: readonly HandPart[] = [
     {
       hand: right,
-      events: repeatTurningChord(upper, turn).map((voicing) => unfingered(voicing)),
+      events: repeatTurningChord(placed.upper, turn).map((voicing) => unfingered(voicing)),
     },
     {
       hand: left,
-      events: repeatTurningChord(bass, turn).map((pitch) => unfingered([pitch])),
+      events: repeatTurningChord(placed.bass, turn).map((pitch) => unfingered([pitch])),
     },
   ];
 
