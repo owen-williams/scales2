@@ -9,6 +9,14 @@
  * spelling, no voice under the bass, no two notes of a chord on the same line,
  * no leap a hand could not make — because those are what a rotation or a
  * transposition could silently break.
+ *
+ * One thing about the shape has to be held in mind throughout. The tables hold
+ * fifteen chords — eight up, seven down — but the realised exercise is sixteen
+ * bars, because the arrival on the octave is written twice: once closing the
+ * ascent, once opening the descent, so that the two printed lines are equal runs
+ * of eight. Every pinned sequence below therefore carries its eighth element
+ * again as its ninth, and the descending half proper starts at index 9. See
+ * `repeatTurningChord` in `./index`.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -37,6 +45,25 @@ import type { RuleOfOctaveModeTable } from './types';
 
 const MODES = ['major', 'minor'] as const;
 const ALL_TONICS: readonly PitchClass[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+/**
+ * The turn: the last bar of the ascent, the arrival on the upper tonic. Because
+ * that bar is written twice, it is also the bar before the descent starts.
+ *
+ * Counted from the curated ascending half rather than written as `7`, so these
+ * land in the right place however long a future table's halves are.
+ */
+const TURN = ASCENDING_BASS_DEGREES.length - 1;
+/** The second writing of the octave: the first bar of the descending line. */
+const OCTAVE_AGAIN = TURN + 1;
+/** Where the descent proper begins — the descending seventh degree. */
+const DESCENT = OCTAVE_AGAIN + 1;
+/**
+ * The descending sixth degree: the augmented sixth in Fenaroli's minor, the
+ * plain four-three in Campion's, and the one chromatic chord of the major rule.
+ * Bar 11 of the sixteen.
+ */
+const DESCENDING_SIXTH = DESCENT + DESCENDING_BASS_DEGREES.indexOf(6);
 
 function exercise(
   tonic: PitchClass,
@@ -109,7 +136,10 @@ describe('the curated tables', () => {
   it.each(tables)('$name walks the scale up and back down', ({ table }) => {
     expect(table.ascending.map((row) => row?.bass)).toEqual([...ASCENDING_BASS_DEGREES]);
     expect(table.descending.map((row) => row?.bass)).toEqual([...DESCENDING_BASS_DEGREES]);
-    expect(table.ascending.length + table.descending.length).toBe(EVENTS_PER_RULE);
+    // Fifteen curated chords, one bar fewer than the exercise is printed in:
+    // the arrival on the octave is played twice and curated once, which is the
+    // whole of the difference between a table and a realisation.
+    expect(table.ascending.length + table.descending.length).toBe(EVENTS_PER_RULE - 1);
   });
 
   it.each(tables)('$name gives every degree a figure and exactly three upper voices', ({ table }) => {
@@ -156,16 +186,19 @@ describe('the curated tables', () => {
 // C major and C minor, pinned
 // ---------------------------------------------------------------------------
 
+// One line of eight per row, as the two halves are printed: the scale up to the
+// octave, then the octave again and the scale back down.
 const C_MAJOR_BASS = [
   'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4',
-  'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3',
+  'C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3',
 ];
 
 // Melodic ascending, natural descending: Fenaroli's "la sesta del tono si fa
-// maggiore [salendo] e discendendo la settima del tono si fa minore".
+// maggiore [salendo] e discendendo la settima del tono si fa minore". The two
+// writings of C4 straddle that change of collection: A♮ B♮ up to it, B♭ A♭ away.
 const C_MINOR_BASS = [
   'C3', 'D3', 'E♭3', 'F3', 'G3', 'A3', 'B3', 'C4',
-  'B♭3', 'A♭3', 'G3', 'F3', 'E♭3', 'D3', 'C3',
+  'C4', 'B♭3', 'A♭3', 'G3', 'F3', 'E♭3', 'D3', 'C3',
 ];
 
 /**
@@ -174,49 +207,53 @@ const C_MINOR_BASS = [
  * maggiore · 6, 8 e 3 · 5 falsa, 6, [8] e terza · 3, 5 ed 8 ‖ 3 e 6 [+8] ·
  * 4, 6 maggiore e 3 · 5, 8 e 3 maggiore · 6, 2 e quarta maggiore · 8, 3 e 6 ·
  * 3, 4 e 6 maggiore · 3, 5 ed 8".
+ *
+ * That is fifteen chords; the arrays are sixteen, because his "3, 5 ed 8" on
+ * the octave — the chord at the ‖ — is written once at the end of the first row
+ * and once at the head of the second. It is the same chord both times, so each
+ * row below closes and the next opens on the same three notes.
  */
 const FENAROLI_C_MAJOR: Readonly<Record<RuleOfOctavePosition, readonly string[]>> = {
   1: [
-    'E4 G4 C5', 'F4 G4 B4', 'E4 G4 C5', 'D4 A4 C5', 'D4 G4 B4', 'F4 A4 C5', 'F4 G4 D5',
-    'E4 G4 C5',
-    'D4 G4 B4', 'D4 F♯4 C5', 'D4 G4 B4', 'D4 G4 B4', 'E4 G4 C5', 'F4 G4 B4', 'E4 G4 C5',
+    'E4 G4 C5', 'F4 G4 B4', 'E4 G4 C5', 'D4 A4 C5', 'D4 G4 B4', 'F4 A4 C5', 'F4 G4 D5', 'E4 G4 C5',
+    'E4 G4 C5', 'D4 G4 B4', 'D4 F♯4 C5', 'D4 G4 B4', 'D4 G4 B4', 'E4 G4 C5', 'F4 G4 B4', 'E4 G4 C5',
   ],
   2: [
-    'G4 C5 E5', 'G4 B4 F5', 'G4 C5 E5', 'A4 C5 D5', 'G4 B4 D5', 'A4 C5 F5', 'G4 D5 F5',
-    'G4 C5 E5',
-    'G4 B4 D5', 'F♯4 C5 D5', 'G4 B4 D5', 'G4 B4 D5', 'G4 C5 E5', 'G4 B4 F5', 'G4 C5 E5',
+    'G4 C5 E5', 'G4 B4 F5', 'G4 C5 E5', 'A4 C5 D5', 'G4 B4 D5', 'A4 C5 F5', 'G4 D5 F5', 'G4 C5 E5',
+    'G4 C5 E5', 'G4 B4 D5', 'F♯4 C5 D5', 'G4 B4 D5', 'G4 B4 D5', 'G4 C5 E5', 'G4 B4 F5', 'G4 C5 E5',
   ],
   3: [
-    'C5 E5 G5', 'B4 F5 G5', 'C5 E5 G5', 'C5 D5 A5', 'B4 D5 G5', 'C5 F5 A5', 'D5 F5 G5',
-    'C5 E5 G5',
-    'B4 D5 G5', 'C5 D5 F♯5', 'B4 D5 G5', 'B4 D5 G5', 'C5 E5 G5', 'B4 F5 G5', 'C5 E5 G5',
+    'C5 E5 G5', 'B4 F5 G5', 'C5 E5 G5', 'C5 D5 A5', 'B4 D5 G5', 'C5 F5 A5', 'D5 F5 G5', 'C5 E5 G5',
+    'C5 E5 G5', 'B4 D5 G5', 'C5 D5 F♯5', 'B4 D5 G5', 'B4 D5 G5', 'C5 E5 G5', 'B4 F5 G5', 'C5 E5 G5',
   ],
 };
 
-/** Fenaroli in C minor: the augmented sixth (A♭ against F♯) at slot 10. */
+/**
+ * Fenaroli in C minor: the augmented sixth (A♭ against F♯) at bar 11.
+ *
+ * Laid out as above, eight bars to the row, the tonic chord ending the first row
+ * and opening the second.
+ */
 const FENAROLI_C_MINOR: Readonly<Record<RuleOfOctavePosition, readonly string[]>> = {
   1: [
-    'E♭4 G4 C5', 'F4 G4 B4', 'E♭4 G4 C5', 'D4 A♭4 C5', 'D4 G4 B4', 'F4 A4 C5', 'F4 G4 D5',
-    'E♭4 G4 C5',
-    'D4 G4 B♭4', 'D4 F♯4 C5', 'D4 G4 B4', 'D4 G4 B4', 'E♭4 G4 C5', 'F4 G4 B4', 'E♭4 G4 C5',
+    'E♭4 G4 C5', 'F4 G4 B4', 'E♭4 G4 C5', 'D4 A♭4 C5', 'D4 G4 B4', 'F4 A4 C5', 'F4 G4 D5', 'E♭4 G4 C5',
+    'E♭4 G4 C5', 'D4 G4 B♭4', 'D4 F♯4 C5', 'D4 G4 B4', 'D4 G4 B4', 'E♭4 G4 C5', 'F4 G4 B4', 'E♭4 G4 C5',
   ],
   2: [
-    'G4 C5 E♭5', 'G4 B4 F5', 'G4 C5 E♭5', 'A♭4 C5 D5', 'G4 B4 D5', 'A4 C5 F5', 'G4 D5 F5',
-    'G4 C5 E♭5',
-    'G4 B♭4 D5', 'F♯4 C5 D5', 'G4 B4 D5', 'G4 B4 D5', 'G4 C5 E♭5', 'G4 B4 F5', 'G4 C5 E♭5',
+    'G4 C5 E♭5', 'G4 B4 F5', 'G4 C5 E♭5', 'A♭4 C5 D5', 'G4 B4 D5', 'A4 C5 F5', 'G4 D5 F5', 'G4 C5 E♭5',
+    'G4 C5 E♭5', 'G4 B♭4 D5', 'F♯4 C5 D5', 'G4 B4 D5', 'G4 B4 D5', 'G4 C5 E♭5', 'G4 B4 F5', 'G4 C5 E♭5',
   ],
   3: [
-    'C5 E♭5 G5', 'B4 F5 G5', 'C5 E♭5 G5', 'C5 D5 A♭5', 'B4 D5 G5', 'C5 F5 A5', 'D5 F5 G5',
-    'C5 E♭5 G5',
-    'B♭4 D5 G5', 'C5 D5 F♯5', 'B4 D5 G5', 'B4 D5 G5', 'C5 E♭5 G5', 'B4 F5 G5', 'C5 E♭5 G5',
+    'C5 E♭5 G5', 'B4 F5 G5', 'C5 E♭5 G5', 'C5 D5 A♭5', 'B4 D5 G5', 'C5 F5 A5', 'D5 F5 G5', 'C5 E♭5 G5',
+    'C5 E♭5 G5', 'B♭4 D5 G5', 'C5 D5 F♯5', 'B4 D5 G5', 'B4 D5 G5', 'C5 E♭5 G5', 'B4 F5 G5', 'C5 E♭5 G5',
   ],
 };
 
-/** Campion in C minor: a plain four-three (A♭ against F♮) at slot 10. */
+/** Campion in C minor: a plain four-three (A♭ against F♮) at bar 11. */
 const CAMPION_C_MINOR: Readonly<Record<RuleOfOctavePosition, readonly string[]>> = {
-  1: FENAROLI_C_MINOR[1].map((chord, i) => (i === 9 ? 'D4 F4 C5' : chord)),
-  2: FENAROLI_C_MINOR[2].map((chord, i) => (i === 9 ? 'F4 C5 D5' : chord)),
-  3: FENAROLI_C_MINOR[3].map((chord, i) => (i === 9 ? 'C5 D5 F5' : chord)),
+  1: FENAROLI_C_MINOR[1].map((chord, i) => (i === DESCENDING_SIXTH ? 'D4 F4 C5' : chord)),
+  2: FENAROLI_C_MINOR[2].map((chord, i) => (i === DESCENDING_SIXTH ? 'F4 C5 D5' : chord)),
+  3: FENAROLI_C_MINOR[3].map((chord, i) => (i === DESCENDING_SIXTH ? 'C5 D5 F5' : chord)),
 };
 
 describe('C major and C minor, note for note', () => {
@@ -267,19 +304,19 @@ describe('where the two versions part company', () => {
         const differing = fen.chords
           .map((chord, index) => (chord === cam.chords[index] ? null : index))
           .filter((index) => index !== null);
-        expect(differing).toEqual([9]);
+        expect(differing).toEqual([DESCENDING_SIXTH]);
       }
     }
   });
 
   it("Fenaroli's descending sixth is an augmented sixth, Campion's a plain fourth", () => {
-    // C minor, first position, slot 10: the bass is A♭ in both readings.
+    // C minor, first position, bar 11: the bass is A♭ in both readings.
     const fen = readable(exercise(0, 'minor', 'fenaroli', 1));
     const cam = readable(exercise(0, 'minor', 'campion', 1));
-    expect(fen.bass[9]).toBe('A♭3');
-    expect(cam.bass[9]).toBe('A♭3');
-    expect(fen.chords[9]).toBe('D4 F♯4 C5');
-    expect(cam.chords[9]).toBe('D4 F4 C5');
+    expect(fen.bass[DESCENDING_SIXTH]).toBe('A♭3');
+    expect(cam.bass[DESCENDING_SIXTH]).toBe('A♭3');
+    expect(fen.chords[DESCENDING_SIXTH]).toBe('D4 F♯4 C5');
+    expect(cam.chords[DESCENDING_SIXTH]).toBe('D4 F4 C5');
   });
 });
 
@@ -289,7 +326,7 @@ describe('where the two versions part company', () => {
 
 describe('the realised exercise', () => {
   it.each(everyVariant())(
-    'is fifteen events in both hands ($version $mode, position $position)',
+    'is sixteen events in both hands ($version $mode, position $position)',
     ({ version, mode, position }) => {
       for (const tonic of ALL_TONICS) {
         const { parts } = realiseRuleOfOctave(exercise(tonic, mode, version, position));
@@ -299,7 +336,9 @@ describe('the realised exercise', () => {
         expect(left?.hand).toBe('left');
         expect(right?.events).toHaveLength(EVENTS_PER_RULE);
         expect(left?.events).toHaveLength(EVENTS_PER_RULE);
-        expect(EVENTS_PER_RULE).toBe(15);
+        // Eight bars to a printed line, and two lines: the fifteen curated
+        // chords plus the second writing of the octave.
+        expect(EVENTS_PER_RULE).toBe(16);
         for (const event of left?.events ?? []) expect(event.pitches).toHaveLength(1);
         for (const event of right?.events ?? []) expect(event.pitches).toHaveLength(3);
       }
@@ -385,31 +424,38 @@ describe('the realised exercise', () => {
 
 describe('the bass', () => {
   it.each(everyVariant())(
-    'is the scale up then down with the upper tonic written once ($version $mode)',
+    'is the scale up then down with the upper tonic written twice ($version $mode)',
     ({ version, mode, position }) => {
       for (const tonic of ALL_TONICS) {
         const { parts } = realiseRuleOfOctave(exercise(tonic, mode, version, position));
         const bass = (parts[1]?.events ?? []).map((event) => event.pitches[0]);
         const pitches = bass.filter((pitch): pitch is Pitch => pitch !== undefined);
-        expect(pitches).toHaveLength(15);
+        expect(pitches).toHaveLength(16);
 
         const first = pitches[0];
-        const peak = pitches[7];
-        const last = pitches[14];
-        if (first === undefined || peak === undefined || last === undefined) throw new Error('x');
+        const peak = pitches[TURN];
+        const again = pitches[OCTAVE_AGAIN];
+        const last = pitches[EVENTS_PER_RULE - 1];
+        if (first === undefined || peak === undefined) throw new Error('x');
+        if (again === undefined || last === undefined) throw new Error('x');
 
         // Starts and ends on the same tonic; turns at the tonic an octave up.
         expect(formatPitch(last)).toBe(formatPitch(first));
         expect(peak.letter).toBe(first.letter);
         expect(peak.octave).toBe(first.octave + 1);
-        // The turning note is written once: no repeat across the join.
-        expect(formatPitch(pitches[8] ?? peak)).not.toBe(formatPitch(peak));
+        // The turning note is written twice: the same note, spelled the same
+        // way, closing one line and opening the next.
+        expect(formatPitch(again)).toBe(formatPitch(peak));
 
-        // Every step is one letter, up for the first half and down for the second.
+        // Every step is one letter, up to the octave and down from it, with the
+        // one standing still in the middle where the octave is restated.
         const step = (a: Pitch, b: Pitch) =>
           letterIndex(b.letter) + 7 * b.octave - (letterIndex(a.letter) + 7 * a.octave);
-        for (let i = 0; i < 7; i += 1) expect(step(pitches[i]!, pitches[i + 1]!)).toBe(1);
-        for (let i = 7; i < 14; i += 1) expect(step(pitches[i]!, pitches[i + 1]!)).toBe(-1);
+        for (let i = 0; i < TURN; i += 1) expect(step(pitches[i]!, pitches[i + 1]!)).toBe(1);
+        expect(step(peak, again)).toBe(0);
+        for (let i = OCTAVE_AGAIN; i < EVENTS_PER_RULE - 1; i += 1) {
+          expect(step(pitches[i]!, pitches[i + 1]!)).toBe(-1);
+        }
       }
     },
   );
@@ -423,14 +469,100 @@ describe('the bass', () => {
         SCALE_TYPES.naturalMinor,
         'ascending',
       );
-      // Slots 6 and 7 (indices 5, 6) are the raised sixth and seventh.
+      // Bars 6 and 7 (indices 5, 6) are the raised sixth and seventh.
       expect(bass[5]!.alter).toBe(natural[5]!.alter + 1);
       expect(bass[6]!.alter).toBe(natural[6]!.alter + 1);
-      // Slots 9 and 10 (indices 8, 9) come back down unraised.
-      expect(bass[8]!.alter).toBe(natural[6]!.alter);
-      expect(bass[9]!.alter).toBe(natural[5]!.alter);
+      // Bars 10 and 11 (indices 9, 10) come back down unraised — the first two
+      // bars after the octave's second writing, which is what pushed them on by
+      // one from where they used to sit.
+      expect(bass[DESCENT]!.alter).toBe(natural[6]!.alter);
+      expect(bass[DESCENDING_SIXTH]!.alter).toBe(natural[5]!.alter);
     }
   });
+});
+
+// ---------------------------------------------------------------------------
+// The turn: the octave written twice
+// ---------------------------------------------------------------------------
+
+/**
+ * The arrival on the octave closes the ascending line and opens the descending
+ * one, so it is engraved in two bars rather than one and each printed line is a
+ * complete run of eight.
+ *
+ * The curated tables know nothing about this — Fenaroli's descending list really
+ * does begin on the seventh, and `fenaroli.ts` and `campion.ts` say so — which
+ * is precisely why it has to be pinned here, against the realisation, and not
+ * inferred from a table somewhere.
+ */
+describe('the octave, written twice', () => {
+  it.each(everyVariant())(
+    'restates the arrival note for note in both hands ($version $mode, position $position)',
+    ({ version, mode, position }) => {
+      for (const tonic of ALL_TONICS) {
+        const { parts } = realiseRuleOfOctave(exercise(tonic, mode, version, position));
+        for (const part of parts) {
+          const arrival = part.events[TURN];
+          const departure = part.events[OCTAVE_AGAIN];
+          if (arrival === undefined || departure === undefined) {
+            throw new Error('expected a chord on the octave and a restatement of it');
+          }
+          // One chord printed twice, not two chords that happen to sound alike:
+          // same letters, same accidentals, same octaves, in both hands.
+          expect(departure.pitches.map(formatPitch)).toEqual(arrival.pitches.map(formatPitch));
+          expect(departure.pitches).toEqual(arrival.pitches);
+        }
+      }
+    },
+  );
+
+  it('is the tonic chord of the key, in C major and C minor', () => {
+    // Fenaroli's "ed all'ottava 3, 5 ed 8" — the hand is back where it started,
+    // which is what a position means, and it stays there for the second bar.
+    const major = readable(exercise(0, 'major', 'fenaroli', 1));
+    expect([major.bass[TURN], major.bass[OCTAVE_AGAIN]]).toEqual(['C4', 'C4']);
+    expect([major.chords[TURN], major.chords[OCTAVE_AGAIN]]).toEqual(['E4 G4 C5', 'E4 G4 C5']);
+
+    const minor = readable(exercise(0, 'minor', 'campion', 3));
+    expect([minor.bass[TURN], minor.bass[OCTAVE_AGAIN]]).toEqual(['C4', 'C4']);
+    expect([minor.chords[TURN], minor.chords[OCTAVE_AGAIN]]).toEqual(['C5 E♭5 G5', 'C5 E♭5 G5']);
+  });
+
+  it.each(everyVariant())(
+    'is the only bar the player sees twice running ($version $mode, position $position)',
+    ({ version, mode, position }) => {
+      // A second repeated bar anywhere else would read as an engraving slip, so
+      // the restatement has to be provably the only one.
+      for (const tonic of ALL_TONICS) {
+        const { bass, chords } = readable(exercise(tonic, mode, version, position));
+        const repeated: number[] = [];
+        for (let bar = 1; bar < EVENTS_PER_RULE; bar += 1) {
+          if (bass[bar] === bass[bar - 1] && chords[bar] === chords[bar - 1]) repeated.push(bar);
+        }
+        expect(repeated).toEqual([OCTAVE_AGAIN]);
+      }
+    },
+  );
+
+  it.each(everyVariant())(
+    'is the whole of the repetition, the held 5̂–4̂ aside ($version $mode, position $position)',
+    ({ version, mode, position }) => {
+      // Why the assertion above is about whole bars and not about the right hand
+      // alone: the right hand genuinely does stand still once more, coming down.
+      // The 5/3 over the fifth degree is held while the bass steps to the fourth
+      // beneath it, making the 4/2 — Sanguinetti's dissonances "prepared by 5/3
+      // on the previous fifth degree". Same three notes, a different bar, because
+      // the bass moves. That is a suspension, not a restatement.
+      const fifth = DESCENT + DESCENDING_BASS_DEGREES.indexOf(5);
+      const fourth = DESCENT + DESCENDING_BASS_DEGREES.indexOf(4);
+      expect(fourth).toBe(fifth + 1);
+      for (const tonic of ALL_TONICS) {
+        const { bass, chords } = readable(exercise(tonic, mode, version, position));
+        expect(chords[fourth]).toBe(chords[fifth]);
+        expect(bass[fourth]).not.toBe(bass[fifth]);
+      }
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -663,17 +795,17 @@ describe('spelling in all 24 keys', () => {
     // E♭ minor's descending sixth is C♭, and the augmented sixth over it wants
     // the raised fourth, A♮ — not the B𝄫/A♯ an enharmonic shortcut would give.
     const eFlatMinor = readable(exercise(3, 'minor', 'fenaroli', 1));
-    expect(eFlatMinor.bass[9]).toBe('C♭4');
-    expect(eFlatMinor.chords[9]).toBe('F4 A4 E♭5');
+    expect(eFlatMinor.bass[DESCENDING_SIXTH]).toBe('C♭4');
+    expect(eFlatMinor.chords[DESCENDING_SIXTH]).toBe('F4 A4 E♭5');
 
     // G♯ minor genuinely contains double sharps: F𝄪 as the leading tone and
     // C𝄪 as the raised fourth of the augmented sixth.
     const gSharpMinor = readable(exercise(8, 'minor', 'fenaroli', 1));
     expect(gSharpMinor.bass[6]).toBe('F𝄪4');
-    expect(gSharpMinor.chords[9]).toBe('A♯4 C𝄪5 G♯5');
+    expect(gSharpMinor.chords[DESCENDING_SIXTH]).toBe('A♯4 C𝄪5 G♯5');
 
     // F♯ major's descending sixth needs B♯, the sharpened fourth degree.
     const fSharpMajor = readable(exercise(6, 'major', 'fenaroli', 1));
-    expect(fSharpMajor.chords[9]).toBe('G♯4 B♯4 F♯5');
+    expect(fSharpMajor.chords[DESCENDING_SIXTH]).toBe('G♯4 B♯4 F♯5');
   });
 });

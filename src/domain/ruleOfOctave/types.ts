@@ -105,8 +105,15 @@ export const ASCENDING_BASS_DEGREES: readonly Degree[] = [1, 2, 3, 4, 5, 6, 7, 1
 /** The bass degrees of the descending half, in order. */
 export const DESCENDING_BASS_DEGREES: readonly Degree[] = [7, 6, 5, 4, 3, 2, 1];
 
-/** Fifteen chords to a complete scale: eight up, seven back down. */
-export const EVENTS_PER_RULE = ASCENDING_BASS_DEGREES.length + DESCENDING_BASS_DEGREES.length;
+/**
+ * Sixteen bars to a complete rule: eight up, eight back down.
+ *
+ * Fifteen distinct *chords*, though. The arrival on the octave is written
+ * twice — once ending the ascent, once beginning the descent — so that the two
+ * halves print as equal lines. See `repeatTurningChord` in `./index`.
+ */
+export const EVENTS_PER_RULE =
+  ASCENDING_BASS_DEGREES.length + DESCENDING_BASS_DEGREES.length + 1;
 
 /**
  * One historical version of the rule, in both modes.

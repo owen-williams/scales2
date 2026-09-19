@@ -134,7 +134,10 @@ ascending and back down: play the scale in the left hand and the rule tells you 
 over each note. It was how an eighteenth-century keyboard player learned to harmonise, and it is one octave
 up and down — fifteen chords — every time, so motion, octaves and direction do not apply to it. It is
 engraved a chord to the bar, in semibreves, because it is read and voiced rather than played in time,
-with the ascending and descending halves on separate lines.
+with the ascending and descending halves on separate lines. The arrival on the octave is written twice,
+closing one line and opening the next, so each line is a complete run of eight bars — without that the
+two halves are eight bars against seven and cannot be spaced alike, since every system but the last is
+justified to the full width.
 
 Two historical versions ship, and the user picks which are in the pool the way scale families are picked:
 

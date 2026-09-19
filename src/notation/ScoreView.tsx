@@ -21,6 +21,8 @@ import type { IOSMDOptions, OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 export interface ScoreViewProps {
   musicXml: string;
   showFingerings: boolean;
+  /** Give every bar the same width. Only for music that is uniform bar to bar. */
+  evenMeasures?: boolean;
   /** Accessible description, e.g. "Notation for E♭ Harmonic Minor, both hands, similar motion, 2 octaves". */
   label: string;
 }
@@ -36,6 +38,7 @@ const BOX_EPSILON_PX = 4;
 interface LoadedSignature {
   readonly musicXml: string;
   readonly showFingerings: boolean;
+  readonly evenMeasures: boolean;
   readonly colour: string;
 }
 
@@ -254,7 +257,12 @@ function decorateSvg(container: HTMLElement): void {
 // ---------------------------------------------------------------------------
 
 
-export function ScoreView({ musicXml, showFingerings, label }: ScoreViewProps): JSX.Element {
+export function ScoreView({
+  musicXml,
+  showFingerings,
+  evenMeasures = false,
+  label,
+}: ScoreViewProps): JSX.Element {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null);
   /** Bumped by every render attempt; stale continuations compare unequal and bail. */
@@ -296,13 +304,14 @@ export function ScoreView({ musicXml, showFingerings, label }: ScoreViewProps): 
         if (!isCurrent()) return;
 
         const colour = readColour(container);
-        const signature: LoadedSignature = { musicXml, showFingerings, colour };
+        const signature: LoadedSignature = { musicXml, showFingerings, evenMeasures, colour };
         const previous = loadedRef.current;
         const needsLoad =
           osmdRef.current === null ||
           previous === null ||
           previous.musicXml !== signature.musicXml ||
           previous.showFingerings !== signature.showFingerings ||
+          previous.evenMeasures !== signature.evenMeasures ||
           previous.colour !== signature.colour;
 
         if (osmdRef.current === null) {
@@ -321,6 +330,9 @@ export function ScoreView({ musicXml, showFingerings, label }: ScoreViewProps): 
           // turn fingerings off — so the rule has to be set directly for the
           // flag to be able to turn them back on.
           osmd.EngravingRules.RenderFingerings = showFingerings;
+          // Uniform bar widths, so two systems of different bar counts still
+          // space their music identically.
+          osmd.EngravingRules.FixedMeasureWidth = evenMeasures;
           // There is no `fingeringPositionFromXML` option in 1.9; it lives on
           // EngravingRules. Note that OSMD 1.9 parses the `placement` attribute
           // we write but does not act on it for fingerings — it engraves them
@@ -384,7 +396,7 @@ export function ScoreView({ musicXml, showFingerings, label }: ScoreViewProps): 
       // Invalidate anything still in flight for this effect run.
       generationRef.current++;
     };
-  }, [musicXml, showFingerings, resizeNonce]);
+  }, [musicXml, showFingerings, evenMeasures, resizeNonce]);
 
   // -- Resize --------------------------------------------------------------
   useEffect(() => {

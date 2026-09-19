@@ -290,4 +290,13 @@ export interface RealisedExercise {
    * lines, which is how the rule is read — up the scale, then back down.
    */
   readonly systemBreaks?: readonly number[];
+  /**
+   * Ask the engraver to give every bar the same width.
+   *
+   * Only sensible where every bar holds the same amount of music. The Rule of
+   * the Octave is one chord a bar throughout, and without this its two lines —
+   * eight bars then seven — are spaced differently from each other, which reads
+   * as though the descending half were slower.
+   */
+  readonly evenMeasures?: boolean;
 }

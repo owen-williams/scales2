@@ -324,6 +324,25 @@ const MODE_NAME: Readonly<Record<'major' | 'minor', string>> = {
  * produce a bar of invented harmony. `isRuleOfOctaveComplete` is the check to
  * make before offering such an exercise.
  */
+/**
+ * Write the arrival on the octave twice: once ending the ascent, once beginning
+ * the descent.
+ *
+ * This is a layout decision, not a musical one, and it deliberately lives here
+ * rather than in the curated tables — Fenaroli's descending list really does
+ * begin on the seventh, and `campion.ts` and `fenaroli.ts` say so. But the two
+ * halves are printed on separate lines, and eight bars against seven cannot be
+ * spaced alike: every system but the last is justified to the full width, so
+ * the shorter line always comes out more widely spaced. Restating the octave
+ * makes each line a complete run, 1 to 8 and 8 back to 1, which is how the two
+ * forms are usually printed when they are shown apart.
+ */
+function repeatTurningChord<T>(values: readonly T[], turn: number): T[] {
+  const arrival = values[turn];
+  if (arrival === undefined) throw new Error('the rule has no chord on the octave');
+  return [...values.slice(0, turn + 1), arrival, ...values.slice(turn + 1)];
+}
+
 export function realiseRuleOfOctave(exercise: RuleOfOctaveExercise): {
   readonly title: string;
   readonly fifths: number;
@@ -367,9 +386,16 @@ export function realiseRuleOfOctave(exercise: RuleOfOctaveExercise): {
   // Score order: the right hand on top, then the left, as everywhere else.
   const right: Hand = 'right';
   const left: Hand = 'left';
+  const turn = table.ascending.length - 1;
   const parts: readonly HandPart[] = [
-    { hand: right, events: upper.map((voicing) => unfingered(voicing)) },
-    { hand: left, events: bass.map((pitch) => unfingered([pitch])) },
+    {
+      hand: right,
+      events: repeatTurningChord(upper, turn).map((voicing) => unfingered(voicing)),
+    },
+    {
+      hand: left,
+      events: repeatTurningChord(bass, turn).map((pitch) => unfingered([pitch])),
+    },
   ];
 
   return {

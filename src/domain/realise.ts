@@ -237,8 +237,10 @@ function realiseRuleOfOctaveExercise(e: RuleOfOctaveExercise): RealisedExercise 
     fifths,
     hasFingering: false,
     noteType: 'whole',
-    // Up the scale on one line, back down on the next.
+    // Up the scale on one line, back down on the next, evenly spaced across
+    // both so the two halves match.
     systemBreaks: [ASCENDING_BASS_DEGREES.length],
+    evenMeasures: true,
   };
 }
 

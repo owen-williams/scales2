@@ -21,5 +21,12 @@ export function NotationPanel({ realised, descriptors, showFingerings }: Notatio
   const musicXml = useMemo(() => toMusicXml(realised), [realised]);
   const label = `Notation for ${realised.title}, ${descriptors.join(', ').toLowerCase()}`;
 
-  return <ScoreView musicXml={musicXml} showFingerings={showFingerings} label={label} />;
+  return (
+    <ScoreView
+      musicXml={musicXml}
+      showFingerings={showFingerings}
+      evenMeasures={realised.evenMeasures ?? false}
+      label={label}
+    />
+  );
 }
